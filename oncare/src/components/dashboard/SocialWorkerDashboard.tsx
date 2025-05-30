@@ -114,38 +114,38 @@ export default function SocialWorkerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background-secondary">
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-border-light shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* 로고 */}
             <div className="flex items-center">
               <Image
-                src="/container.png"
-                alt='Oncare Logo'
+                src="/Container.png"
+                alt="Oncare Logo"
                 width={120}
                 height={50}
                 priority
                 quality={100}
-                className='h-9 w-auto'
+                className="h-7 w-auto"
               />
             </div>
             
-            {/* 사용자 정보 */}
+            {/* 로그인/회원가입 버튼 */}
             <div className="flex items-center justify-center">
               <button
                 onClick={() => window.location.href = '/signup'}
-                className='transition-transform duration-200 hover:scale-105'
+                className="transition-transform duration-200 hover:scale-105"
               >
                 <Image 
                   src="/LoginButton.png"
-                  alt='로그인/회원가입'
+                  alt="로그인/회원가입"
                   width={100}
                   height={34}
                   priority
                   quality={100}
-                  className='h-9 w-auto object-contain'
+                  className="h-7 w-auto object-contain"
                 />
               </button>
             </div>
@@ -157,31 +157,31 @@ export default function SocialWorkerDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 페이지 제목 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 text-center">
+          <h1 className="text-3xl font-bold text-text-primary text-center">
             Attendance Records Management
           </h1>
         </div>
 
         {/* 탭 네비게이션 */}
         <div className="mb-6">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-border-light">
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                   activeTab === 'overview'
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-default'
                 }`}
               >
                 Overview
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                   activeTab === 'settings'
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-default'
                 }`}
               >
                 Settings
@@ -197,32 +197,32 @@ export default function SocialWorkerDashboard() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                    <tr className="border-b border-border-light bg-background-tertiary">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         요양보호사
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         오늘일정
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         일지상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         보고서상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         상세보기
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-border-light">
                     {caregivers.map((caregiver) => (
-                      <tr key={caregiver.id} className="hover:bg-gray-50">
+                      <tr key={caregiver.id} className="hover:bg-primary-50 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-text-primary">
                             {caregiver.name}
                           </div>
                         </td>
@@ -230,7 +230,7 @@ export default function SocialWorkerDashboard() {
                           {getStatusBadge(caregiver.status)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-text-secondary">
                             {caregiver.schedule || '-'}
                           </div>
                         </td>
@@ -248,15 +248,14 @@ export default function SocialWorkerDashboard() {
                               className="w-8 h-8 p-0"
                               title="상세 보기"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye />
                             </Button>
                             <Button 
                               size="sm" 
-                              variant="outline"
-                              className="w-8 h-8 p-0 bg-gray-800 text-white hover:bg-gray-700"
+                              className="w-8 h-8 p-0 bg-text-primary text-white hover:bg-gray-700"
                               title="리포트"
                             >
-                              <FileText className="w-4 h-4" />
+                              <FileText />
                             </Button>
                           </div>
                         </td>
@@ -276,7 +275,7 @@ export default function SocialWorkerDashboard() {
               <CardTitle>설정</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">설정 페이지 내용이 여기에 표시됩니다.</p>
+              <p className="text-text-secondary">설정 페이지 내용이 여기에 표시됩니다.</p>
             </CardContent>
           </Card>
         )}
