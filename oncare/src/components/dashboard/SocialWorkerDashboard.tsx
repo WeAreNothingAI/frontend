@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, FileText, Calendar, User } from 'lucide-react';
+import Image from 'next/image';
 
 // Mock 데이터
 const caregivers = [
@@ -120,14 +121,34 @@ export default function SocialWorkerDashboard() {
           <div className="flex justify-between items-center h-16">
             {/* 로고 */}
             <div className="flex items-center">
-              <span className="text-xl font-semibold text-gray-700">✳ Oncare</span>
+              <Image
+                src="/container.png"
+                alt='Oncare Logo'
+                width={120}
+                height={50}
+                priority
+                quality={100}
+                className='h-9 w-auto'
+              />
             </div>
             
             {/* 사용자 정보 */}
-            <Button variant="outline" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              복지사 + 이름/기관
-            </Button>
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => window.location.href = '/signup'}
+                className='transition-transform duration-200 hover:scale-105'
+              >
+                <Image 
+                  src="/LoginButton.png"
+                  alt='로그인/회원가입'
+                  width={100}
+                  height={34}
+                  priority
+                  quality={100}
+                  className='h-9 w-auto object-contain'
+                />
+              </button>
+            </div>
           </div>
         </div>
       </header>
