@@ -30,6 +30,11 @@
   --color-text-secondary: #374151;
   --color-text-tertiary: #6b7280;
   --color-signup-title: #A2985E;
+
+  --color-border-light: rgba(110, 80, 73, 0.2);
+  --color-border-default: rgba(110, 80, 73, 0.2);
+  --color-border-dark: rgba(110, 80, 73, 0.3);
+  --color-border-base: #6E5049;
 }
 
 

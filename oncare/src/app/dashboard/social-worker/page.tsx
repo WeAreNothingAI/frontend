@@ -1,4 +1,4 @@
-import SocialWorkerDashboard from '/src/components/dashboard/SocialWorkerDashboard';
+import SocialWorkerDashboard from '@/components/dashboard/SocialWorkerDashboard';
 
 export default function SocialWorkerPage() {
   return <SocialWorkerDashboard />;

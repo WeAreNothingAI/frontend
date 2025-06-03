@@ -83,9 +83,11 @@ const config: Config = {
 
         // 테두리 색상
         border: {
-          light: '#e5e7eb',
-          default: '#d1d5db',
-          dark: '#9ca3af',
+          light: 'rgba(110, 80, 73, 0.2)',    // #6E5049 20% opacity
+          default: 'rgba(110, 80, 73, 0.2)',  // #6E5049 20% opacity  
+          dark: 'rgba(110, 80, 73, 0.3)',     // 조금 더 진한 버전 (옵션)
+          // 또는 hex + opacity 방식
+          base: '#6E5049',  // 기본 색상 (opacity는 클래스로 조절)
         },
 
         // 텍스트 색상
