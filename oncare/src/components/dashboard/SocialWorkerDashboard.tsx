@@ -4,7 +4,16 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, FileText, Calendar, User } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import Image from 'next/image';
+import { Calendar, ChevronRight, Clock, X } from 'lucide-react';
+import { FormInput } from '@/components/ui/FormComponents';
 
 // Mock 데이터
 const caregivers = [
@@ -84,6 +93,33 @@ const caregivers = [
 
 export default function SocialWorkerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedCaregiver, setSelectedCaregiver] = useState<typeof caregivers[0] | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    elderName: ''
+  });
+
+  const handleOpenDetail = (caregiver: typeof caregivers[0]) => {
+    setSelectedCaregiver(caregiver);
+    setFormData({
+      name: caregiver.name,
+      phone: '',
+      elderName: ''
+    });
+    setIsSheetOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
 
   const getStatusBadge = (status: string) => {
     if (status === 'ON') {
@@ -113,21 +149,41 @@ export default function SocialWorkerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background-secondary">
       {/* 헤더 */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-border-light shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* 로고 */}
             <div className="flex items-center">
-              <span className="text-xl font-semibold text-gray-700">✳ Oncare</span>
+              <Image
+                src="/Container.png"
+                alt="Oncare Logo"
+                width={120}
+                height={50}
+                priority
+                quality={100}
+                className="h-7 w-auto"
+              />
             </div>
             
-            {/* 사용자 정보 */}
-            <Button variant="outline" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              복지사 + 이름/기관
-            </Button>
+            {/* 로그인/회원가입 버튼 */}
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => window.location.href = '/signup'}
+                className="transition-transform duration-200 hover:scale-105"
+              >
+                <Image 
+                  src="/LoginButton.png"
+                  alt="로그인/회원가입"
+                  width={100}
+                  height={34}
+                  priority
+                  quality={100}
+                  className="h-7 w-auto object-contain"
+                />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -136,31 +192,31 @@ export default function SocialWorkerDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 페이지 제목 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 text-center">
+          <h1 className="text-3xl font-bold text-text-primary text-center">
             Attendance Records Management
           </h1>
         </div>
 
         {/* 탭 네비게이션 */}
         <div className="mb-6">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-border-light">
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                   activeTab === 'overview'
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-default'
                 }`}
               >
                 Overview
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                   activeTab === 'settings'
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-default'
                 }`}
               >
                 Settings
@@ -171,37 +227,37 @@ export default function SocialWorkerDashboard() {
 
         {/* Overview 탭 콘텐츠 */}
         {activeTab === 'overview' && (
-          <Card>
+          <Card className='border-b border-border-light'>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                    <tr className="border-b border-border-light bg-background-tertiary">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         요양보호사
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         오늘일정
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         일지상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         보고서상태
                       </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
                         상세보기
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-border-light">
                     {caregivers.map((caregiver) => (
-                      <tr key={caregiver.id} className="hover:bg-gray-50">
+                      <tr key={caregiver.id} className="hover:bg-primary-50 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-text-primary">
                             {caregiver.name}
                           </div>
                         </td>
@@ -209,7 +265,7 @@ export default function SocialWorkerDashboard() {
                           {getStatusBadge(caregiver.status)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-text-secondary">
                             {caregiver.schedule || '-'}
                           </div>
                         </td>
@@ -221,22 +277,26 @@ export default function SocialWorkerDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="w-8 h-8 p-0"
-                              title="상세 보기"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="w-8 h-8 p-0 bg-gray-800 text-white hover:bg-gray-700"
-                              title="리포트"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </Button>
+                          <button
+                            className="w-8 h-8 relative cursor-pointer transition-transform hover:scale-110 group"
+                            title="상세 보기"
+                            onClick={() => handleOpenDetail(caregiver)}
+                          >
+                            <Image
+                              src="/folder.png"
+                              alt="상세 보기"
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-contain group-hover:hidden"
+                            />
+                            <Image
+                              src="/folder_filled.png"
+                              alt="상세 보기"
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-contain hidden group-hover:block absolute top-0 left-0"
+                            />
+                          </button>
                           </div>
                         </td>
                       </tr>
@@ -248,6 +308,128 @@ export default function SocialWorkerDashboard() {
           </Card>
         )}
 
+         {/* Slide-over Sheet */}
+         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent 
+            side="right" 
+            className="w-full max-w-[800px] lg:max-w-[1080px] bg-white p-0 sm:w-[800px] lg:w-[1080px]" 
+            style={{ maxWidth: '1080px', width: '100%' }} // 인라인 스타일로 강제 적용
+          >
+            {/* 접근성을 위한 숨겨진 헤더 추가 */}
+            <SheetHeader className="sr-only">
+              <SheetTitle>요양보호사 일지 작성</SheetTitle>
+              <SheetDescription>
+                요양보호사의 정보를 수정하고 일지를 작성할 수 있습니다.
+              </SheetDescription>
+            </SheetHeader>
+
+            {/* 헤더 영역 */}
+            <div className="border-b border-gray-200 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">일지 작성</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedCaregiver?.name}님의 일지를 작성합니다
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsSheetOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            
+            {/* 콘텐츠 영역 */}
+            <div className="flex flex-col h-[calc(100%-88px)]">
+              {/* 프로필 및 일지 작성 섹션 */}
+              <div className="px-8 py-6 border-b border-gray-200">
+                {/* 프로필 수정하기 섹션 - FormInput 재사용 */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">프로필 수정하기</h3>
+                  
+                  <div className="space-y-4">
+                    <FormInput
+                      label="이름"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="이름을 입력하세요"
+                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
+                      // 커스텀 스타일로 OnCare 초록색 대신 회색 사용
+                    />
+                    
+                    <FormInput
+                      label="전화번호"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="010-0000-0000"
+                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
+                    />
+                    
+                    <FormInput
+                      label="관리 노인 이름"
+                      name="elderName"
+                      value={formData.elderName}
+                      onChange={handleInputChange}
+                      placeholder="김순자"
+                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
+                    />
+                  </div>
+                </div>
+
+                {/* 일지 작성 날짜/시간 */}
+                <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>{new Date().toLocaleDateString('ko-KR')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 일지 생성 목록 */}
+              <div className="flex-1 overflow-y-auto px-8 py-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">일지 생성</h3>
+                
+                <div className="space-y-3">
+                  {/* 일지 목록 아이템 */}
+                  {[1, 2, 3, 4, 5].map((index) => (
+                    <button
+                      key={index}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm text-gray-600">4/11</span>
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* 하단 버튼 */}
+                <div className="mt-6 flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    녹음 하기
+                  </Button>
+                  <Button 
+                    variant="default"
+                    className="flex-1 bg-primary-500 hover:bg-primary-600"
+                  >
+                    일지 생성
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
         {/* Settings 탭 콘텐츠 */}
         {activeTab === 'settings' && (
           <Card>
@@ -255,7 +437,7 @@ export default function SocialWorkerDashboard() {
               <CardTitle>설정</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">설정 페이지 내용이 여기에 표시됩니다.</p>
+              <p className="text-text-secondary">설정 페이지 내용이 여기에 표시됩니다.</p>
             </CardContent>
           </Card>
         )}
