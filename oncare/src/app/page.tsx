@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 export default function Home() {
   useEffect(() => {
     // 페이지 로드 시 바로 로그인 페이지로 리다이렉트
-    window.location.href = '/signup';
+    window.location.href = '/oauth';
   }, []);
 
   return (
