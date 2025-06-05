@@ -12,8 +12,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import Image from 'next/image';
-import { Calendar, ChevronRight, Clock, X } from 'lucide-react';
-import { FormInput } from '@/components/ui/FormComponents';
+import { Calendar, ChevronRight, Clock} from 'lucide-react';
 
 // Mock 데이터
 const caregivers = [
@@ -93,8 +92,8 @@ const caregivers = [
 
 export default function SocialWorkerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedCaregiver, setSelectedCaregiver] = useState<typeof caregivers[0] | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -102,13 +101,23 @@ export default function SocialWorkerDashboard() {
     elderName: ''
   });
 
+  const [savedData, setSavedData] = useState({
+    name: '',
+    phone: '',
+    elderName: ''
+  });
+
+
   const handleOpenDetail = (caregiver: typeof caregivers[0]) => {
-    setSelectedCaregiver(caregiver);
-    setFormData({
+    const initialData = {
       name: caregiver.name,
       phone: '',
       elderName: ''
-    });
+    };
+    
+    setFormData(initialData);
+    setSavedData(initialData);
+    setIsEditing(false);
     setIsSheetOpen(true);
   };
 
@@ -118,6 +127,22 @@ export default function SocialWorkerDashboard() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+
+  const handleSave = () => {
+    setSavedData(formData);
+    setIsEditing(false);
+    // 여기에 실제 API 호출 로직 추가
+  };
+
+  const handleCancel = () => {
+    setFormData(savedData);
+    setIsEditing(false);
   };
 
 
@@ -147,6 +172,7 @@ export default function SocialWorkerDashboard() {
     }
     return null;
   };
+
 
   return (
     <div className="min-h-screen bg-background-secondary">
@@ -313,7 +339,7 @@ export default function SocialWorkerDashboard() {
           <SheetContent 
             side="right" 
             className="w-full max-w-[800px] lg:max-w-[1080px] bg-white p-0 sm:w-[800px] lg:w-[1080px]" 
-            style={{ maxWidth: '1080px', width: '100%' }} // 인라인 스타일로 강제 적용
+            style={{ maxWidth: '800px', width: '100%' }} // 인라인 스타일로 강제 적용
           >
             {/* 접근성을 위한 숨겨진 헤더 추가 */}
             <SheetHeader className="sr-only">
@@ -323,113 +349,164 @@ export default function SocialWorkerDashboard() {
               </SheetDescription>
             </SheetHeader>
 
-            {/* 헤더 영역 */}
-            <div className="border-b border-gray-200 px-8 py-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">일지 작성</h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedCaregiver?.name}님의 일지를 작성합니다
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsSheetOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-            </div>
-            
-            {/* 콘텐츠 영역 */}
-            <div className="flex flex-col h-[calc(100%-88px)]">
-              {/* 프로필 및 일지 작성 섹션 */}
-              <div className="px-8 py-6 border-b border-gray-200">
-                {/* 프로필 수정하기 섹션 - FormInput 재사용 */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">프로필 수정하기</h3>
-                  
-                  <div className="space-y-4">
-                    <FormInput
-                      label="이름"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="이름을 입력하세요"
-                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
-                      // 커스텀 스타일로 OnCare 초록색 대신 회색 사용
-                    />
+          
+            {/* 콘텐츠 영역 - 좌우 분할 */}
+            <div className="flex h-[calc(100%-73px)]">
+                {/* 왼쪽 영역 - 프로필 수정 & 일지 목록 */}
+                <div className="w-[300px] border-r border-gray-200 flex flex-col">
+                  {/* 프로필 수정하기 섹션 */}
+                  <div className="px-4 py-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-base font-medium text-gray-900">프로필</h3>
+                      {!isEditing ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleEdit}
+                          className="h-7 px-3 text-xs border-gray-300"
+                        >
+                          수정하기
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancel}
+                            className="h-7 px-3 text-xs border-gray-300"
+                          >
+                            취소
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSave}
+                            className="h-7 px-3 text-xs bg-primary-500 hover:bg-primary-600"
+                          >
+                            저장하기
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     
-                    <FormInput
-                      label="전화번호"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="010-0000-0000"
-                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
-                    />
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-700">이름</label>
+                        <input
+                          name="name"
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                            isEditing 
+                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
+                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                          } focus:outline-none`}
+                          placeholder="이름을 입력하세요"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-700">전화번호</label>
+                        <input
+                          name="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                            isEditing 
+                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
+                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                          } focus:outline-none`}
+                          placeholder="010-0000-0000"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-700">관리 노인 이름</label>
+                        <input
+                          name="elderName"
+                          value={formData.elderName}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                            isEditing 
+                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
+                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                          } focus:outline-none`}
+                          placeholder="관리 노인 이름"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                {/* 일지 목록 섹션 */}
+                  <div className="flex-1 overflow-y-auto px-6 py-6">
+                    <h3 className="text-base font-medium text-gray-900 mb-4">일지목록</h3>
                     
-                    <FormInput
-                      label="관리 노인 이름"
-                      name="elderName"
-                      value={formData.elderName}
-                      onChange={handleInputChange}
-                      placeholder="김순자"
-                      className="!bg-gray-50 !text-gray-900 !border-gray-200"
-                    />
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4, 5].map((index) => (
+                        <button
+                          key={index}
+                          className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="text-sm text-gray-600">4/11</span>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* 일지 작성 날짜/시간 */}
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date().toLocaleDateString('ko-KR')}</span>
+                {/* 오른쪽 영역 - 일지 작성 */}
+                <div className="flex-1 flex flex-col">
+                  {/* 일지 작성 헤더 */}
+                  <div className="px-6 pt-10 pb-2">
+                    <div className="flex flex-col items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900">일지 작성</h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          <span>{new Date().toLocaleDateString('ko-KR')}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          <span>{new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>{new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+
+                  {/* 일지 작성 영역 */}
+                  <div className="flex-1 overflow-y-auto p-6">
+                    {/* 여기에 일지 작성 폼이나 에디터가 들어갑니다 */}
+                    <div className="h-full bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-500 text-center">일지 작성 영역</p>
+                      {/* 추후 텍스트 에디터나 폼 추가 */}
+                    </div>
+                  </div>
+
+                  {/* 하단 버튼들 */}
+                  <div className="mt-6 flex gap-3 px-6">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        녹음 하기
+                      </Button>
+                      <Button 
+                        variant="default"
+                        className="flex-1 bg-primary-500 hover:bg-primary-600"
+                      >
+                        일지 생성
+                      </Button>
                   </div>
                 </div>
               </div>
+            </SheetContent>
+          </Sheet>
 
-              {/* 일지 생성 목록 */}
-              <div className="flex-1 overflow-y-auto px-8 py-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">일지 생성</h3>
-                
-                <div className="space-y-3">
-                  {/* 일지 목록 아이템 */}
-                  {[1, 2, 3, 4, 5].map((index) => (
-                    <button
-                      key={index}
-                      className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="text-sm text-gray-600">4/11</span>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </button>
-                  ))}
-                </div>
 
-                {/* 하단 버튼 */}
-                <div className="mt-6 flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
-                  >
-                    녹음 하기
-                  </Button>
-                  <Button 
-                    variant="default"
-                    className="flex-1 bg-primary-500 hover:bg-primary-600"
-                  >
-                    일지 생성
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
         {/* Settings 탭 콘텐츠 */}
         {activeTab === 'settings' && (
           <Card>
