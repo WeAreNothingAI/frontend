@@ -3,6 +3,8 @@
 import React, { useState, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FormInput, FormButton, FormCard, FormLink } from '@/components/ui/FormComponents';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // 타입 정의
 interface SignupFormData {
@@ -10,6 +12,8 @@ interface SignupFormData {
   email: string;
   password: string;
   confirmPassword: string;
+  phone?: string;
+  role?: 'caregiver' | 'social_worker';
 }
 
 interface FormErrors {
@@ -17,17 +21,20 @@ interface FormErrors {
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<SignupFormData>({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: '',
+    role: 'caregiver'
   });
   
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -82,6 +89,11 @@ export default function SignupPage() {
       newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.';
     }
     
+    // 전화번호 검증 (선택사항)
+    if (formData.phone && !/^010-?\d{4}-?\d{4}$/.test(formData.phone.replace(/-/g, ''))) {
+      newErrors.phone = '올바른 전화번호 형식을 입력해주세요. (010-0000-0000)';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -90,22 +102,40 @@ export default function SignupPage() {
     if (!validateForm()) return;
     
     setIsLoading(true);
+    setErrors({}); // 기존 에러 초기화
     
     try {
-      // TODO: 실제 회원가입 API 호출
-      console.log('회원가입 데이터:', formData);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone || undefined,
+          role: formData.role || 'caregiver'
+        }),
+      });
       
-      // 임시: 2초 후 성공 처리
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const data = await response.json();
       
-      // 성공 메시지 표시 후 로그인 페이지로 이동
-      alert('회원가입이 완료되었습니다!');
-      window.location.href = '/login';
-      
+      if (response.ok && data.success) {
+        alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
+        router.push('/login');
+      } else {
+        // 회원가입 실패
+        if (data.message?.includes('이미 존재하는')) {
+          setErrors({ email: '이미 사용 중인 이메일입니다.' });
+        } else {
+          setErrors({ general: data.message || '회원가입에 실패했습니다.' });
+        }
+      }
     } catch (error) {
       console.error('회원가입 에러:', error);
       setErrors({ 
-        general: '회원가입 중 오류가 발생했습니다. 다시 시도해주세요.' 
+        general: '서버 연결 오류가 발생했습니다. 다시 시도해주세요.' 
       });
     } finally {
       setIsLoading(false);
@@ -117,20 +147,21 @@ export default function SignupPage() {
       {/* 상단 헤더 */}
       <header className="w-full flex justify-between items-center p-6">
         {/* 로고 */}
-        <div className="flex items-center">
-          <Image 
-            src="/Container.png" 
-            alt="Oncare Logo" 
-            width={120} 
-            height={40}
+        <Link href="/oauth" className="flex items-center">
+          <Image
+            src="/Container.png"
+            alt="Oncare Logo"
+            width={120}
+            height={50}
             priority
-            className="h-8 w-auto"
+            quality={100}
+            className="h-7 w-auto cursor-pointer hover:opacity-80 transition-opacity"
           />
-        </div>
+        </Link>
 
         {/* 로그인/회원가입 버튼 */}
         <button
-          onClick={() => window.location.href = '/login'}
+          onClick={() => router.push('/login')}
           className="transition-transform duration-200 hover:scale-105"
           disabled={isLoading}
         >
@@ -140,6 +171,7 @@ export default function SignupPage() {
             width={100}
             height={34}
             priority
+            quality={100}
             className="h-8 w-auto object-contain"
           />
         </button>
@@ -148,7 +180,6 @@ export default function SignupPage() {
       {/* 메인 컨텐츠 */}
       <main className="flex-1 flex items-center justify-center p-4">
         <FormCard title="회원가입">
-          {/* 6단계: 간격 반응형 조정 */}
           <div className="space-y-4 sm:space-y-5 md:space-y-6">
             {/* 일반 에러 메시지 */}
             {errors.general && (
@@ -217,7 +248,41 @@ export default function SignupPage() {
               disabled={isLoading}
             />
 
-            {/* 6단계: 확인 버튼 간격 조정 */}
+            {/* 전화번호 입력 (선택사항) */}
+            <FormInput
+              label="전화번호 (선택)"
+              name="phone"
+              type="tel"
+              value={formData.phone || ''}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder="010-0000-0000"
+              error={errors.phone}
+              disabled={isLoading}
+            />
+
+            {/* 역할 선택 */}
+            <div className="space-y-1 sm:space-y-2">
+              <label className="block text-sm sm:text-base md:text-lg font-medium text-gray-800">
+                역할
+              </label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleInputChange}
+                disabled={isLoading}
+                className="w-full px-3 sm:px-4 md:px-5 py-2 sm:py-3 md:py-4 rounded-lg text-sm sm:text-base md:text-lg text-white border-2 transition-all duration-200 focus:outline-none focus:ring-0"
+                style={{
+                  backgroundColor: '#8AAD8A',
+                  borderColor: '#8AAD8A'
+                }}
+              >
+                <option value="caregiver">요양보호사</option>
+                <option value="social_worker">사회복지사</option>
+              </select>
+            </div>
+
+            {/* 확인 버튼 */}
             <div className="pt-3 sm:pt-4 md:pt-6">
               <FormButton 
                 onClick={handleSubmit}
@@ -229,11 +294,12 @@ export default function SignupPage() {
               </FormButton>
             </div>
 
-            {/* 6단계: 로그인 링크 간격 조정 */}
+            {/* 로그인 링크 */}
             <div className="text-center pt-3 sm:pt-4 md:pt-6">
-              <FormLink href="/login">
-                이미 계정이 있나요? 로그인
-              </FormLink>
+              <div className="flex items-center justify-center gap-1 text-sm sm:text-base md:text-lg">
+                <span className="text-gray-600">이미 계정이 있나요?</span>
+                <FormLink href="/login">로그인</FormLink>
+              </div>
             </div>
           </div>
         </FormCard>

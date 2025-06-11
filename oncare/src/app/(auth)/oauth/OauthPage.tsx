@@ -5,29 +5,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export default function OAuthPage() {
-
   const handleKakaoLogin = () => {
-    // 카카오 OAuth 로그인
     const KAKAO_CLIENT_ID = process.env.NEXT_PUBLIC_KAKAO_CLIENT_ID;
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI;
-    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+    const REDIRECT_URI = 'http://oncare-2087995465.ap-northeast-2.elb.amazonaws.com/auth/kakao/callback';
     
-    window.location.href = KAKAO_AUTH_URL;
-  };
-
-  const handleNaverLogin = () => {
-    // 네이버 OAuth 로그인
-    const NAVER_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_CLIENT_ID;
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI;
-    const STATE = Math.random().toString(36).substring(2); // CSRF 방지용 랜덤 문자열
-    const NAVER_AUTH_URL = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}`;
-    
-    // state 값을 sessionStorage에 저장 (콜백에서 검증용)
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('oauth_state', STATE);
+    if (!KAKAO_CLIENT_ID || !REDIRECT_URI) {
+      alert('카카오 로그인 설정이 완료되지 않았습니다.');
+      return;
     }
     
-    window.location.href = NAVER_AUTH_URL;
+    const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+    window.location.href = KAKAO_AUTH_URL;
   };
 
   return (
@@ -42,7 +30,6 @@ export default function OAuthPage() {
             height={60}
             className="h-12 w-auto"
             priority
-            quality={100}
           />
         </div>
 
@@ -60,14 +47,14 @@ export default function OAuthPage() {
               height={56}
               className="w-full h-auto rounded-lg shadow-sm"
               priority
-              quality={100}
             />
           </button>
 
-          {/* 네이버 로그인 버튼 */}
-          <button
+          {/* 네이버 로그인 버튼 - 임시 비활성화 */}
+          {/* <button
             onClick={handleNaverLogin}
-            className="w-full transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            disabled
+            className="w-full transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98] opacity-50 cursor-not-allowed"
           >
             <Image
               src="/naver.png"
@@ -76,9 +63,8 @@ export default function OAuthPage() {
               height={56}
               className="w-full h-auto rounded-lg shadow-sm"
               priority
-              quality={100}
             />
-          </button>
+          </button> */}
         </div>
 
         {/* 하단 링크 */}
