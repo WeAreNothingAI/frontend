@@ -3,6 +3,8 @@
 import React, { useState, ChangeEvent } from 'react';
 import Image from 'next/image';
 import { FormInput, FormButton, FormCard, FormLink } from '@/components/ui/FormComponents';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // 타입 정의
 interface LoginFormData {
@@ -15,6 +17,7 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
@@ -65,25 +68,6 @@ export default function LoginPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
-  const simulateLogin = async (): Promise<{ success: boolean; error?: string }> => {
-    // TODO: 실제 로그인 API 호출 대신 시뮬레이션
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 임시 로그인 검증 로직
-    const validEmail = 'test@example.com';
-    const validPassword = 'password123';
-    
-    if (formData.email !== validEmail) {
-      return { success: false, error: '존재하지 않는 아이디입니다.' };
-    }
-    
-    if (formData.password !== validPassword) {
-      return { success: false, error: '비밀번호가 아이디와 일치하지 않습니다.' };
-    }
-    
-    return { success: true };
-  };
   
   const handleSubmit = async (): Promise<void> => {
     if (!validateForm()) return;
@@ -92,27 +76,65 @@ export default function LoginPage() {
     setErrors({}); // 기존 에러 초기화
     
     try {
-      const result = await simulateLogin();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 쿠키 포함
+        body: JSON.stringify(formData),
+      });
       
-      if (result.success) {
-        // 성공 시 대시보드로 이동
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // 로그인 성공
+        // 쿠키는 백엔드가 자동으로 설정
+        
+        // 필요시 localStorage에 토큰 저장 (STT용)
+        if (data.accessToken) {
+          localStorage.setItem('accessToken', data.accessToken);
+        }
+        
+        // 사용자 정보 저장
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
         alert('로그인이 완료되었습니다!');
-        window.location.href = '/dashboard/social-worker';
+        
+        // 역할에 따라 다른 페이지로 이동
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
+        alert('로그인이 완료되었습니다!');
+        
+        // 일단 social-worker 대시보드로만 이동
+        router.push('/dashboard/social-worker');
+        
+        // TODO: 나중에 역할별 라우팅 구현
+        // if (data.user?.role === 'social_worker') {
+        //   router.push('/dashboard/social-worker');
+        // } else if (data.user?.role === 'caregiver') {
+        //   router.push('/dashboard/caregiver');
+        // } else {
+        //   router.push('/dashboard');
+        // }
       } else {
-        // 실패 시 서버 에러 메시지 표시
-        if (result.error === '존재하지 않는 아이디입니다.') {
-          setErrors({ email: result.error });
-        } else if (result.error === '비밀번호가 아이디와 일치하지 않습니다.') {
-          setErrors({ password: result.error });
+        // 로그인 실패
+        if (data.message?.includes('아이디')) {
+          setErrors({ email: data.message });
+        } else if (data.message?.includes('비밀번호')) {
+          setErrors({ password: data.message });
         } else {
-          setErrors({ general: result.error || '로그인에 실패했습니다.' });
+          setErrors({ general: data.message || '로그인에 실패했습니다.' });
         }
       }
-      
     } catch (error) {
       console.error('로그인 에러:', error);
       setErrors({ 
-        general: '로그인 중 오류가 발생했습니다. 다시 시도해주세요.' 
+        general: '서버 연결 오류가 발생했습니다. 다시 시도해주세요.' 
       });
     } finally {
       setIsLoading(false);
@@ -124,20 +146,21 @@ export default function LoginPage() {
       {/* 상단 헤더 */}
       <header className="w-full flex justify-between items-center p-6">
         {/* 로고 */}
-        <div className="flex items-center">
-          <Image 
-            src="/Container.png" 
-            alt="Oncare Logo" 
-            width={120} 
-            height={40}
+        <Link href="/oauth" className="flex items-center">
+          <Image
+            src="/Container.png"
+            alt="Oncare Logo"
+            width={120}
+            height={50}
             priority
-            className="h-8 w-auto"
+            quality={100}
+            className="h-7 w-auto cursor-pointer hover:opacity-80 transition-opacity"
           />
-        </div>
+        </Link>
 
         {/* 로그인/회원가입 버튼 */}
         <button
-          onClick={() => window.location.href = '/signup'}
+          onClick={() => router.push('/signup')}
           className="transition-transform duration-200 hover:scale-105"
           disabled={isLoading}
         >
@@ -147,6 +170,7 @@ export default function LoginPage() {
             width={100}
             height={34}
             priority
+            quality={100}
             className="h-8 w-auto object-contain"
           />
         </button>
@@ -161,7 +185,7 @@ export default function LoginPage() {
               <div 
                 className="p-4 border-2 rounded-lg"
                 style={{
-                  backgroundColor: '#8AAD8A',
+                  backgroundColor: '#ffe3e3',
                   borderColor: '#FF7171'
                 }}
               >
@@ -214,6 +238,20 @@ export default function LoginPage() {
               <div className="flex items-center justify-center gap-1 text-sm sm:text-base md:text-lg">
                 <span className="text-gray-600">회원가입이 필요하신가요?</span>
                 <FormLink href="/signup">회원가입</FormLink>
+              </div>
+            </div>
+
+            {/* OAuth 로그인 링크 */}
+            <div className="text-center">
+              <div className="relative">
+              </div>
+              <div className="mt-4">
+                <Link 
+                  href="/oauth" 
+                  className="text-sm text-gray-600 hover:text-gray-800 font-medium underline"
+                >
+                  소셜 로그인으로 계속하기
+                </Link>
               </div>
             </div>
           </div>
