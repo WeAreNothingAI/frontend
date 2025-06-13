@@ -1,6 +1,5 @@
-// STT 관련 타입 정의
 export interface AudioChunk {
-  audio: number[]; // PCM 데이터 (Float32Array나 Int16Array를 number[]로 변환)
+  audio: number[];
   clientId: number;
 }
 

@@ -1,19 +1,20 @@
+// hooks/useAuth.ts - 문제 수정 버전
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
 
 interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  profileImage?: string;
+  role: 'careWorker' | 'socialWorker';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface UseAuthReturn {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  checkAuth: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -23,64 +24,101 @@ export const useAuth = (): UseAuthReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // 초기 사용자 정보 로드 (localStorage에서 user 정보만)
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
+  // 쿠키에서 사용자 정보 추출 (내부 함수)
+  const extractUserFromCookies = useCallback(() => {
+    try {
+      // 쿠키 파싱
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [name, value] = cookie.trim().split('=');
+        acc[name] = value;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const accessToken = cookies['access_token'];
+      
+      if (accessToken && accessToken.startsWith('eyJ')) {
+        // JWT payload 디코딩
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        
+        // 토큰 만료 확인
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < now) {
+          return null; // 만료된 토큰
+        }
+
+        // 사용자 정보 반환
+        return {
+          id: payload.sub,
+          name: payload.name,
+          email: payload.email,
+          role: payload.role as 'careWorker' | 'socialWorker',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      // JWT 디코딩 실패 시 null 반환
     }
-    setIsLoading(false);
+    
+    return null;
   }, []);
 
-  // 인증 상태 확인 (쿠키는 자동으로 전송됨)
-  const checkAuth = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await api.getProfile();
-      if (response.success && response.user) {
-        setUser(response.user);
+  // 초기화 (한 번만 실행)
+  useEffect(() => {
+    const initialize = () => {
+      // 1. localStorage에서 먼저 확인
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e) {
+          localStorage.removeItem('user');
+        }
+      }
+
+      // 2. 쿠키에서 확인
+      const userFromCookie = extractUserFromCookies();
+      if (userFromCookie) {
+        setUser(userFromCookie);
         setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        localStorage.setItem('user', JSON.stringify(userFromCookie));
       } else {
-        setIsAuthenticated(false);
         setUser(null);
+        setIsAuthenticated(false);
         localStorage.removeItem('user');
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
-      setUser(null);
-      localStorage.removeItem('user');
-    } finally {
+      
       setIsLoading(false);
-    }
-  }, []);
+    };
+
+    initialize();
+  }, []); // 빈 배열로 한 번만 실행
 
   // 로그아웃
   const logout = useCallback(async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // 로컬 상태 정리
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('user'); // user 정보만 제거
-      router.push('/oauth');
-    }
+    // 클라이언트 상태 정리
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('user');
+    
+    // 쿠키 제거
+    document.cookie = 'access_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+    document.cookie = 'refresh_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+    
+    // OAuth 페이지로 이동
+    router.push('/oauth');
   }, [router]);
 
   return {
     user,
     isLoading,
     isAuthenticated,
-    checkAuth,
     logout,
   };
 };

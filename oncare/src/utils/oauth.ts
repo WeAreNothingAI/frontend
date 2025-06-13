@@ -1,4 +1,4 @@
-// src/utils/oauth.ts
+// utils/oauth.ts - 타입 문제 해결
 import { OAUTH_PROVIDERS } from '@/constants/auth';
 import type { OAuthProvider } from '@/types/auth';
 
@@ -18,7 +18,8 @@ export const generateOAuthUrl = (provider: OAuthProvider): string | null => {
     response_type: 'code',
   });
 
-  if (provider === 'naver') {
+  // 🔥 'naver' → 'NAVER'로 변경
+  if (provider === 'NAVER') {
     const state = generateRandomState();
     params.append('state', state);
     

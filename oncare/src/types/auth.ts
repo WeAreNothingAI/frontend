@@ -1,19 +1,20 @@
 export interface AuthResponse {
   success: boolean;
   message?: string;
-  accessToken?: string;
-  refreshToken?: string;
-  user?: User;
+  data?: User;
 }
 
 export interface User {
-  id: string;
+  id: number; // 백엔드는 number 타입 사용
   name: string;
   email: string;
   role: UserRole;
-  profileImage?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export type UserRole = 'social-worker' | 'admin' | 'user';
+// 🔥 백엔드 ERD에 맞춘 Role enum
+export type UserRole = 'careWorker' | 'socialWorker';
 
-export type OAuthProvider = 'kakao' | 'naver';
+// 🔥 백엔드 명세에 맞춘 대문자 형식
+export type OAuthProvider = 'KAKAO' | 'GOOGLE' | 'NAVER';
