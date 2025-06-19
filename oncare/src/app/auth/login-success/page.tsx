@@ -1,128 +1,59 @@
-'use client'
+// app/auth/login-success/page.tsx
+'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginSuccessPage() {
   const router = useRouter();
-  
+  const { setAuthData } = useAuth();
+
   useEffect(() => {
-    console.log('=== Login Success Page ===');
-    console.log('All cookies:', document.cookie);
-    
-    // Parse cookies properly to avoid interference
-    const cookieMap = document.cookie.split(';').reduce((acc, cookie) => {
-      const [name, value] = cookie.trim().split('=');
-      if (name && value) {
-        acc[name] = value;
-      }
-      return acc;
-    }, {} as Record<string, string>);
-    
-    console.log('Parsed cookies:', Object.keys(cookieMap));
-    console.log('Looking for access_token...');
-    
-    const accessToken = cookieMap['access_token'];
-    
-    if (accessToken) {
-      console.log('access_token found:', accessToken.substring(0, 50) + '...');
-      
+    const initializeAuth = async () => {
       try {
-        // JWT decoding
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        console.log('=== JWT Payload Analysis ===');
-        console.log('Full payload:', payload);
-        console.log('Role field:', payload.role);
-        console.log('Role type:', typeof payload.role);
-        console.log('Available fields:', Object.keys(payload));
-        
-        // Role validation
-        const validRoles = ['socialWorker', 'careWorker'];
-        const isValidRole = validRoles.includes(payload.role);
-        console.log('Is valid role?', isValidRole);
-        
-        if (!payload.role) {
-          console.error('Role field is missing from JWT');
-          router.push('/oauth?error=missing_role');
-          return;
+        // localStorage에서 데이터 확인
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+
+        if (!token || !userStr) {
+          throw new Error('인증 정보가 없습니다');
         }
-        
-        // Save to localStorage
-        const userData = {
-          id: payload.sub,
-          name: payload.name,
-          email: payload.email,
-          role: payload.role,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        
-        localStorage.setItem('user', JSON.stringify(userData));
-        console.log('User info saved successfully');
-        
-        // Navigate to dashboard with fallback
-        let dashboardPath;
-        if (payload.role === 'socialWorker') {
-          dashboardPath = '/dashboard/social-worker';
-        } else if (payload.role === 'careWorker') {
-          dashboardPath = '/dashboard/care-worker';
-        } else {
-          console.warn('Unknown role, defaulting to social-worker dashboard');
-          dashboardPath = '/dashboard/social-worker';
-        }
-        
-        console.log('Navigating to:', dashboardPath);
-        
+
+        const user = JSON.parse(userStr);
+        console.log('🔐 인증 정보 확인:', { user, hasToken: !!token });
+
+        // useAuth 훅에 데이터 설정
+        setAuthData(token, user);
+
+        // role에 따른 라우팅
         setTimeout(() => {
-          window.location.href = dashboardPath;
-        }, 1000);
-        
+          if (user.role === 'socialWorker') {
+            console.log('➡️ 사회복지사 대시보드로 이동');
+            router.push('/dashboard/social-worker');
+          } else if (user.role === 'careWorker') {
+            console.log('➡️ 요양보호사 대시보드로 이동');
+            router.push('/dashboard/care-worker');
+          } else {
+            throw new Error('알 수 없는 사용자 역할');
+          }
+        }, 1000); // 1초 대기 (사용자 경험 개선)
+
       } catch (error) {
-        console.error('JWT decode failed:', error);
-        router.push('/oauth?error=jwt_decode_failed');
+        console.error('❌ 인증 초기화 실패:', error);
+        router.push('/login?error=auth_failed');
       }
-    } else {
-      console.error('access_token not found');
-      console.log('Available cookies:', Object.keys(cookieMap));
-      console.log('Checking for any JWT-like tokens...');
-      
-      // Check for any JWT-like tokens (starting with eyJ)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const jwtTokens = Object.entries(cookieMap).filter(([name, value]) => 
-        value && value.startsWith('eyJ')
-      );
-      
-      if (jwtTokens.length > 0) {
-        console.log('Found JWT-like tokens:', jwtTokens.map(([name]) => name));
-        // Try the first JWT token found
-        const [tokenName, tokenValue] = jwtTokens[0];
-        console.log('Trying token:', tokenName);
-        
-        try {
-          const payload = JSON.parse(atob(tokenValue.split('.')[1]));
-          console.log('Alternative token payload:', payload);
-          // Could continue with this token...
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e) {
-          console.error('Failed to decode alternative token');
-        }
-      }
-      
-      router.push('/oauth?error=no_access_token');
-    }
-  }, [router]);
+    };
+
+    initializeAuth();
+  }, [router, setAuthData]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900">Login Processing</h2>
-        <p className="text-gray-600">Checking cookies...</p>
-        <p className="text-sm text-gray-500">Please check console</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+        <h2 className="text-2xl font-bold mb-4 text-gray-800">로그인 성공!</h2>
+        <p className="text-gray-600 mb-4">대시보드로 이동 중입니다...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
       </div>
     </div>
   );

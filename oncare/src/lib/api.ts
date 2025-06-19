@@ -139,19 +139,35 @@ interface ReportDetail {
 }
 
 class ApiClient {
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('access_token');
+    
+    if (token) {
+      return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+    }
+    
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_URL}${endpoint}`;
     
+    // 🔥 토큰 기반 인증으로 변경
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
         ...options.headers,
       },
-      credentials: 'include', // 🔥 쿠키 자동 포함 (중요!)
+      // credentials: 'include' 제거 (쿠키 대신 토큰 사용)
     });
 
     if (!response.ok) {
@@ -160,6 +176,16 @@ class ApiClient {
         message: `HTTP ${response.status}`,
         error: response.statusText
       }));
+      
+      // 401 에러 시 토큰 만료 처리
+      if (response.status === 401) {
+        console.log('🔐 토큰이 만료되었습니다.');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        // 필요시 로그인 페이지로 리다이렉트
+        window.location.href = '/oauth';
+      }
+      
       throw new Error(`${errorData.statusCode}: ${errorData.message}`);
     }
 
@@ -206,7 +232,8 @@ class ApiClient {
     return this.request('/careworker');
   }
 
-  async getCareWorkerWorkThisWeek(): Promise<ApiResponse<WorkData[]>> {
+  // 이번 주 근무 데이터 조회 (메서드명 변경)
+  async getThisWeekWorks(): Promise<ApiResponse<WorkData[]>> {
     return this.request('/careworker/works/this-week');
   }
 
@@ -271,20 +298,22 @@ class ApiClient {
   }
 
   // 📝 일지 관련
-  async getJournals(
-    startDate?: string, 
-    endDate?: string, 
-    careWorkerId?: number
-  ): Promise<ApiResponse<JournalListItem[]>> {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    if (careWorkerId) params.append('careWorkerId', careWorkerId.toString());
+  // 기간별 일지 목록 조회 (메서드명 변경)
+  async getJournalsByDateRange(params: {
+    startDate?: string;
+    endDate?: string;
+    careWorkerId?: number;
+  }): Promise<ApiResponse<JournalListItem[]>> {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.careWorkerId) queryParams.append('careWorkerId', params.careWorkerId.toString());
     
-    return this.request(`/journal/list/date-range?${params.toString()}`);
+    return this.request(`/journal/list/date-range?${queryParams.toString()}`);
   }
 
-  async getJournal(id: number): Promise<JournalDetail> {
+  // 일지 상세 조회
+  async getJournalSummary(id: number): Promise<JournalDetail> {
     return this.request(`/journal/${id}`);
   }
 
@@ -299,7 +328,8 @@ class ApiClient {
     });
   }
 
-  async createJournalSummary(id: number): Promise<JournalSummaryResponse> {
+  // 일지 요약 생성 (메서드명 변경)
+  async generateJournalSummary(id: number): Promise<JournalSummaryResponse> {
     return this.request(`/journal/${id}/summary`, {
       method: 'POST'
     });
@@ -311,13 +341,14 @@ class ApiClient {
     });
   }
 
-  async getJournalDocxDownload(id: number): Promise<{ download_url: string }> {
+  // 일지 다운로드 URL 조회 (메서드명 변경)
+  async getJournalDocxUrl(id: number): Promise<{ download_url: string }> {
     return this.request(`/journal/${id}/download-docx`, {
       method: 'POST'
     });
   }
 
-  async getJournalPdfDownload(id: number): Promise<{ download_url: string }> {
+  async getJournalPdfUrl(id: number): Promise<{ download_url: string }> {
     return this.request(`/journal/${id}/download-pdf`, {
       method: 'POST'
     });
@@ -343,20 +374,22 @@ class ApiClient {
     return this.request(`/report/${id}`);
   }
 
-  async createReport(journalIds: number[]): Promise<ReportDetail[]> {
+  // 주간보고서 생성 (메서드명 변경)
+  async createWeeklyReport(journalIds: number[]): Promise<ReportDetail[]> {
     return this.request('/report', {
       method: 'POST',
       body: JSON.stringify({ journalIds })
     });
   }
 
-  async getReportDocxDownload(id: number): Promise<{ download_url: string }> {
+  // 보고서 다운로드 URL 조회 (메서드명 변경)
+  async getReportDocxUrl(id: number): Promise<{ download_url: string }> {
     return this.request(`/report/${id}/download-docx`, {
       method: 'POST'
     });
   }
 
-  async getReportPdfDownload(id: number): Promise<{ download_url: string }> {
+  async getReportPdfUrl(id: number): Promise<{ download_url: string }> {
     return this.request(`/report/${id}/download-pdf`, {
       method: 'POST'
     });
