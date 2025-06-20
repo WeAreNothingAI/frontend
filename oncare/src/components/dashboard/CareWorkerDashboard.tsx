@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Sheet,
   SheetContent,
@@ -13,119 +13,80 @@ import {
 } from "@/components/ui/sheet";
 import Image from 'next/image';
 import Link from 'next/link';
-import { Calendar, ChevronRight, Clock, Mic, MicOff, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Mic, MicOff, Loader2, Upload, FileAudio, Play, Pause, X } from 'lucide-react';
 import { useSTTWebSocket } from '@/hooks/useSTTWebSocKet';
+import type { ClientDetail } from '@/lib/api';
+import LogoutButton from '../ui/LogOutButton';
 
-// Mock 데이터
-const caregivers = [
+// Mock 데이터 (실제로는 API에서 가져옴)
+const mockClients = [
   {
     id: 1,
-    name: '오천희',
-    status: 'ON',
-    schedule: 'AM 10:00 - PM 12:00',
-    reportStatus: '작성완료',
-    dailyStatus: '미작성',
+    name: '김복자',
+    birthDate: '1945-03-15',
+    gender: '여',
+    address: '서울시 강남구',
+    contact: '010-1234-5678',
+    guardianContact: '010-9876-5432',
+    careWorkerId: 1,
+    notes: '고혈압 주의'
   },
   {
     id: 2,
-    name: '김다영',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
+    name: '이순자',
+    birthDate: '1940-07-20',
+    gender: '여',
+    address: '서울시 서초구',
+    contact: '010-2345-6789',
+    guardianContact: '010-8765-4321',
+    careWorkerId: 1,
+    notes: '당뇨병 관리 필요'
   },
   {
     id: 3,
-    name: '권현지',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 4,
-    name: '박송규',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 5,
-    name: '홍길동',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 6,
-    name: '김용수',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 7,
-    name: '박민우',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 8,
-    name: '김하경',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
-  {
-    id: 9,
-    name: '이송신',
-    status: 'OFF',
-    schedule: '',
-    reportStatus: '',
-    dailyStatus: '',
-  },
+    name: '박영수',
+    birthDate: '1942-11-08',
+    gender: '남',
+    address: '서울시 송파구',
+    contact: '010-3456-7890',
+    guardianContact: '010-7654-3210',
+    careWorkerId: 1,
+    notes: '거동 불편'
+  }
 ];
 
-export default function SocialWorkerDashboard() {
+export default function CareWorkerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [clients, setClients] = useState<ClientDetail[]>([]);
+  const [selectedClient, setSelectedClient] = useState<ClientDetail | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    elderName: ''
-  });
-
-  const [savedData, setSavedData] = useState({
-    name: '',
-    phone: '',
-    elderName: ''
-  });
-
+  const [isLoading, setIsLoading] = useState(true);
+  const [workStatus, setWorkStatus] = useState<Map<number, {isWorking: boolean, startTime?: string}>>(new Map());
+  
+  // 일지 관련 상태
   const [journalContent, setJournalContent] = useState('');
-  const [journalList, setJournalList] = useState<Array<{id: number, date: string, content: string}>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isEditingJournal, setIsEditingJournal] = useState(false);;
+  const [isEditingJournal, setIsEditingJournal] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentToken = localStorage.getItem('access_token');
+  const sttHook = useSTTWebSocket;
+
+  
 
   // STT WebSocket Hook
   const {
     isRecording,
     isConnected,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    transcribedText,
     startRecording,
     stopRecording,
     clearTranscription
-  } = useSTTWebSocket({
+  } = sttHook({
     onTranscription: (text) => {
-      // 실시간으로 텍스트 추가
       setJournalContent(prev => prev + ' ' + text);
     },
     onError: (error) => {
@@ -133,122 +94,180 @@ export default function SocialWorkerDashboard() {
     }
   });
 
-  const handleOpenDetail = (caregiver: typeof caregivers[0]) => {
-    const initialData = {
-      name: caregiver.name,
-      phone: '',
-      elderName: ''
-    };
-    
-    setFormData(initialData);
-    setSavedData(initialData);
-    setIsEditing(false);
-    setJournalContent(''); // 일지 내용 초기화
-    clearTranscription(); // STT 텍스트 초기화
+  // 초기 데이터 로드
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      // 실제로는 API 호출
+      // const response = await api.getClients();
+      // setClients(response);
+      
+      // Mock 데이터 사용
+      setTimeout(() => {
+        setClients(mockClients);
+        setIsLoading(false);
+      }, 1000);
+    } catch (error) {
+      console.error('노인 목록 조회 실패:', error);
+      setIsLoading(false);
+    }
+  };
+
+  // 출근 처리
+  const handleClockIn = async (clientId: number) => {
+    try {
+      // await api.startWork(clientId);
+      
+      const newStatus = new Map(workStatus);
+      newStatus.set(clientId, {isWorking: true, startTime: new Date().toISOString()});
+      setWorkStatus(newStatus);
+      
+      alert('출근 처리되었습니다.');
+    } catch (error) {
+      console.error('출근 처리 실패:', error);
+      alert('출근 처리에 실패했습니다.');
+    }
+  };
+
+  // 퇴근 처리
+  const handleClockOut = async (clientId: number) => {
+    try {
+      // await api.endWork(clientId);
+      
+      const newStatus = new Map(workStatus);
+      newStatus.delete(clientId);
+      setWorkStatus(newStatus);
+      
+      alert('퇴근 처리되었습니다.');
+    } catch (error) {
+      console.error('퇴근 처리 실패:', error);
+      alert('퇴근 처리에 실패했습니다.');
+    }
+  };
+
+  // 일지 작성 열기
+  const handleOpenJournal = (client: ClientDetail) => {
+    setSelectedClient(client);
+    setJournalContent('');
+    clearTranscription();
+    setAudioFile(null);
+    setAudioUrl(null);
+    setIsEditingJournal(false);
     setIsSheetOpen(true);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // 오디오 파일 업로드
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('audio/')) {
+      setAudioFile(file);
+      const url = URL.createObjectURL(file);
+      setAudioUrl(url);
+      
+      // 오디오 파일을 서버로 전송하여 STT 처리
+      processAudioFile(file);
+    } else {
+      alert('오디오 파일만 업로드할 수 있습니다.');
+    }
   };
 
-  const handleEdit: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.preventDefault();
-    setIsEditing(true);
+  // 오디오 파일 STT 처리
+  const processAudioFile = async (file: File) => {
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', file);
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stt/process`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.transcript) {
+          setJournalContent(data.transcript);
+        }
+      }
+    } catch (error) {
+      console.error('오디오 처리 실패:', error);
+      alert('오디오 파일 처리에 실패했습니다. 직접 입력해주세요.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleSave: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.preventDefault();
-    setSavedData(formData);
-    setIsEditing(false);
-    // 여기에 실제 API 호출 로직 추가
-  };
-
-  const handleCancel: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.preventDefault();
-    setFormData(savedData);
-    setIsEditing(false);
-  };
-
-  // 일지 생성 핸들러 (AI 요약 포함)
+  // 일지 생성
   const handleCreateJournal = async () => {
-    if (!journalContent.trim()) return;
+    if (!journalContent.trim() || !selectedClient) {
+      alert('일지 내용을 입력해주세요.');
+      return;
+    }
     
     setIsProcessing(true);
     
     try {
-      // 백엔드로 일지 내용 전송하여 AI 요약 받기
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/journals/summarize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          content: journalContent,
-          caregiverId: formData.name,
-          elderName: formData.elderName
-        })
-      });
+      // 실제 API 호출 부분
+      alert(`${selectedClient.name} 노인의 일지가 생성되었습니다.`);
       
-      const data = await response.json();
-      
-      if (data.success) {
-        // AI가 요약한 내용으로 일지 생성
-        const newJournal = {
-          id: Date.now(),
-          date: new Date().toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
-          content: data.summarizedContent || journalContent
-        };
-        
-        setJournalList(prev => [newJournal, ...prev]);
-        setJournalContent(data.summarizedContent || journalContent);
-        alert('일지가 생성되었습니다.');
+      // 초기화
+      setJournalContent('');
+      clearTranscription();
+      setAudioFile(null);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
       }
+      
+      setIsSheetOpen(false);
     } catch (error) {
       console.error('일지 생성 오류:', error);
-      // 에러 시 원본 내용으로 저장
-      const newJournal = {
-        id: Date.now(),
-        date: new Date().toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
-        content: journalContent
-      };
-      setJournalList(prev => [newJournal, ...prev]);
+      alert('일지 생성에 실패했습니다.');
     } finally {
       setIsProcessing(false);
-      clearTranscription();
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'ON') {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">ON</Badge>;
+  // 오디오 재생/일시정지
+  const toggleAudioPlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
-    return <Badge className="bg-red-100 text-red-800 border-red-200">OFF</Badge>;
   };
 
-  const getReportStatusBadge = (status: string) => {
-    if (status === '작성완료') {
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">작성완료</Badge>;
+  // 오디오 파일 제거
+  const removeAudioFile = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
     }
-    if (status === '미작성') {
-      return <Badge className="bg-red-100 text-red-800 border-red-200">미작성</Badge>;
+    setAudioFile(null);
+    setAudioUrl(null);
+    setIsPlaying(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-    return null;
   };
 
-  const getDailyStatusBadge = (status: string) => {
-    if (status === '미작성') {
-      return <Badge className="bg-red-100 text-red-800 border-red-200">미작성</Badge>;
-    }
-    if (status === '작성완료') {
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">작성완료</Badge>;
-    }
-    return null;
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('ko-KR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const getClientWorkStatus = (clientId: number) => {
+    return workStatus.get(clientId) || { isWorking: false };
   };
 
   return (
@@ -257,7 +276,6 @@ export default function SocialWorkerDashboard() {
       <header className="bg-white border-b border-border-light shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* 로고 - 클릭하면 /oauth로 이동 */}
             <Link href="/oauth" className="flex items-center">
               <Image
                 src="/Container.png"
@@ -270,10 +288,9 @@ export default function SocialWorkerDashboard() {
               />
             </Link>
             
-            {/* 로그인/회원가입 버튼 */}
             <div className="flex items-center justify-center">
-              <button
-                onClick={() => window.location.href = '/signup'}
+              {/* <button
+                onClick={() => window.location.href = '/oauth'}
                 className="transition-transform duration-200 hover:scale-105"
               >
                 <Image 
@@ -285,7 +302,8 @@ export default function SocialWorkerDashboard() {
                   quality={100}
                   className="h-7 w-auto object-contain"
                 />
-              </button>
+              </button> */}
+              <LogoutButton />
             </div>
           </div>
         </div>
@@ -296,7 +314,7 @@ export default function SocialWorkerDashboard() {
         {/* 페이지 제목 */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text-primary text-center">
-            Attendance Records Management
+            담당 노인 관리
           </h1>
         </div>
 
@@ -330,350 +348,283 @@ export default function SocialWorkerDashboard() {
 
         {/* Overview 탭 콘텐츠 */}
         {activeTab === 'overview' && (
-          <Card className='border-b border-border-light'>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border-light bg-background-tertiary">
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        요양보호사
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        상태
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        오늘일정
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        일지상태
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        보고서상태
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-medium text-text-primary">
-                        상세보기
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-light">
-                    {caregivers.map((caregiver) => (
-                      <tr key={caregiver.id} className="hover:bg-primary-50 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-text-primary">
-                            {caregiver.name}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(caregiver.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-text-secondary">
-                            {caregiver.schedule || '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {caregiver.reportStatus && getReportStatusBadge(caregiver.reportStatus)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {caregiver.dailyStatus && getDailyStatusBadge(caregiver.dailyStatus)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                          <button
-                            className="w-8 h-8 relative cursor-pointer transition-transform hover:scale-110 group"
-                            title="상세 보기"
-                            onClick={() => handleOpenDetail(caregiver)}
-                          >
-                            <Image
-                              src="/folder.png"
-                              alt="상세 보기"
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-contain group-hover:hidden"
-                            />
-                            <Image
-                              src="/folder_filled.png"
-                              alt="상세 보기"
-                              width={32}
-                              height={32}
-                              className="w-full h-full object-contain hidden group-hover:block absolute top-0 left-0"
-                            />
-                          </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              <div className="col-span-full flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-         {/* Slide-over Sheet */}
-         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-          <SheetContent 
-            side="right" 
-            className="w-full max-w-[800px] lg:max-w-[1080px] bg-white p-0 sm:w-[800px] lg:w-[1080px]" 
-            style={{ maxWidth: '1080px', width: '100%' }}
-          >
-            {/* 접근성을 위한 숨겨진 헤더 추가 */}
-            <SheetHeader className="sr-only">
-              <SheetTitle>요양보호사 일지 작성</SheetTitle>
-              <SheetDescription>
-                요양보호사의 정보를 수정하고 일지를 작성할 수 있습니다.
-              </SheetDescription>
-            </SheetHeader>
-
-          
-            {/* 콘텐츠 영역 - 좌우 분할 */}
-              <div className="flex h-[calc(100%-73px)]">
-                {/* 왼쪽 영역 - 프로필 수정 & 일지 목록 */}
-                <div className="w-[300px] border-r border-gray-200 flex flex-col">
-                  {/* 프로필 수정하기 섹션 */}
-                  <div className="px-4 py-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-base font-medium text-gray-900">프로필</h3>
-                      {!isEditing ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleEdit}
-                          className="h-7 px-3 text-xs border-gray-300"
-                        >
-                          수정하기
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCancel}
-                            className="h-7 px-3 text-xs border-gray-300"
-                          >
-                            취소
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleSave}
-                            className="h-7 px-3 text-xs bg-primary-500 hover:bg-primary-600"
-                          >
-                            저장하기
-                          </Button>
+            ) : clients.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500">담당 노인이 없습니다.</p>
+              </div>
+            ) : (
+              clients.map((client) => {
+                const clientStatus = getClientWorkStatus(client.id);
+                return (
+                  <Card key={client.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {client.gender} | {new Date(client.birthDate).toLocaleDateString('ko-KR')}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-700">이름</label>
-                        <input
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          disabled={!isEditing}
-                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                            isEditing 
-                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
-                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                          } focus:outline-none`}
-                          placeholder="이름을 입력하세요"
-                        />
+                        {clientStatus.isWorking && (
+                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                            근무중
+                          </Badge>
+                        )}
                       </div>
                       
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-700">전화번호</label>
-                        <input
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          disabled={!isEditing}
-                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                            isEditing 
-                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
-                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                          } focus:outline-none`}
-                          placeholder="010-0000-0000"
-                        />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-700">관리 노인 이름</label>
-                        <input
-                          name="elderName"
-                          value={formData.elderName}
-                          onChange={handleInputChange}
-                          disabled={!isEditing}
-                          className={`w-full px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                            isEditing 
-                              ? 'bg-white border-gray-300 focus:border-primary-500 focus:ring-1 focus:ring-primary-500' 
-                              : 'bg-gray-50 border-gray-200 cursor-not-allowed'
-                          } focus:outline-none`}
-                          placeholder="관리 노인 이름"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                {/* 일지 목록 섹션 */}
-                  <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <h3 className="text-base font-medium text-gray-900 mb-4">일지목록</h3>
-                    
-                    <div className="space-y-3">
-                      {journalList.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-4">
-                          작성된 일지가 없습니다.
+                      <div className="space-y-2 mb-4">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">주소:</span> {client.address}
                         </p>
-                      ) : (
-                        journalList.map((journal) => (
-                          <button
-                            key={journal.id}
-                            className="w-full flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                            onClick={() => setJournalContent(journal.content)}
-                          >
-                            <span className="text-sm text-gray-600">{journal.date}</span>
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 오른쪽 영역 - 일지 작성 */}
-                <div className="flex-1 flex flex-col">
-                  {/* 일지 작성 헤더 */}
-                  <div className="px-6 pt-10 pb-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <h3 className="text-lg font-medium text-gray-900">일지 작성</h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>{new Date().toLocaleDateString('ko-KR')}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">연락처:</span> {client.contact}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">보호자:</span> {client.guardianContact}
+                        </p>
+                        {clientStatus.isWorking && clientStatus.startTime && (
+                          <p className="text-sm text-green-600">
+                            <span className="font-medium">출근시간:</span> {formatTime(clientStatus.startTime)}
+                          </p>
+                        )}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* 일지 작성 영역 */}
-                  <div className="flex-1 overflow-y-auto p-6">
-                    <div className="h-full">
-                      {/* WebSocket 연결 상태 표시 */}
-                      {!isConnected && (
-                        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
-                          <span className="text-sm text-yellow-700">음성 인식 서버 연결 중...</span>
-                        </div>
-                      )}
                       
-                      {/* 녹음 상태 표시 */}
-                      {isRecording && (
-                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                          <span className="text-sm text-red-700">녹음 중... 말씀해 주세요</span>
-                        </div>
-                      )}
-                      
-                      {/* 일지 내용 표시/편집 영역 */}
-                      <div className="relative h-[calc(100%-80px)]">
-                        {isEditingJournal ? (
-                          <textarea
-                            className="w-full h-full p-4 bg-white border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            value={journalContent}
-                            onChange={(e) => setJournalContent(e.target.value)}
-                            placeholder="일지 내용을 입력하세요..."
-                          />
+                      <div className="flex gap-2">
+                        {!clientStatus.isWorking ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleClockIn(client.id)}
+                            className="flex-1"
+                          >
+                            <Clock className="w-4 h-4 mr-1" />
+                            출근
+                          </Button>
                         ) : (
-                          <div className="w-full h-full p-4 bg-gray-50 border border-gray-200 rounded-lg overflow-y-auto">
-                            {journalContent ? (
-                              <p className="text-gray-700 whitespace-pre-wrap">{journalContent}</p>
-                            ) : (
-                              <p className="text-gray-400 text-center">
-                                녹음하기 버튼을 눌러 음성으로 일지를 작성하거나<br />
-                                수정하기 버튼을 눌러 직접 입력하세요.
-                              </p>
-                            )}
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleClockOut(client.id)}
+                            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            <Clock className="w-4 h-4 mr-1" />
+                            퇴근
+                          </Button>
                         )}
                         
-                        {/* 수정하기/저장하기 버튼 */}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="absolute top-2 right-2"
-                          onClick={() => setIsEditingJournal(!isEditingJournal)}
+                          onClick={() => handleOpenJournal(client)}
+                          className="flex-1 bg-primary-500 hover:bg-primary-600"
                         >
-                          {isEditingJournal ? '완료' : '수정하기'}
+                          일지 작성
                         </Button>
                       </div>
-                       {/* 하단 버튼들 - 왼쪽 하단에 위치 */}
-                    <div className="mt-auto pt-6 flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className={`flex-1 transition-all duration-200 ${
-                          isRecording 
-                            ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' 
-                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                        onClick={isRecording ? stopRecording : startRecording}
-                        disabled={!isConnected}
-                      >
-                        {isRecording ? (
-                          <>
-                            <MicOff className="w-4 h-4 mr-2" />
-                            <span>녹음 중지</span>
-                            <div className="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-4 h-4 mr-2" />
-                            <span>녹음 하기</span>
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        variant="default"
-                        className="flex-1 bg-primary-500 hover:bg-primary-600"
-                        disabled={!journalContent.trim() || isProcessing}
-                        onClick={handleCreateJournal}
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            <span>생성 중...</span>
-                          </>
-                        ) : (
-                          '일지 생성'
-                        )}
-                      </Button>
-                    </div>
-                      
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        )}
 
         {/* Settings 탭 콘텐츠 */}
         {activeTab === 'settings' && (
           <Card>
-            <CardHeader>
-              <CardTitle>설정</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <p className="text-text-secondary">설정 페이지 내용이 여기에 표시됩니다.</p>
             </CardContent>
           </Card>
         )}
       </main>
+
+      {/* 일지 작성 Sheet */}
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent 
+          side="right" 
+          className="w-full max-w-[600px] bg-white p-0"
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <SheetTitle>일지 작성</SheetTitle>
+            <SheetDescription>
+              {selectedClient?.name} 노인의 돌봄 일지를 작성합니다.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="p-6 space-y-6 max-h-[calc(100vh-120px)] overflow-y-auto">
+            {/* 날짜/시간 정보 */}
+            <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>{new Date().toLocaleDateString('ko-KR')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>{new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
+
+              {/* WebSocket 연결 상태 */}
+              {!isConnected && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
+                <span className="text-sm text-yellow-700">음성 인식 서버 연결 중...</span>
+              </div>
+            )}
+            
+            {/* 녹음 상태 */}
+            {isRecording && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm text-red-700">녹음 중... 말씀해 주세요</span>
+              </div>
+            )}
+
+            {/* 오디오 파일 업로드 영역 */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioUpload}
+                className="hidden"
+                id="audio-upload"
+                disabled={isProcessing || isRecording}
+              />
+              <label
+                htmlFor="audio-upload"
+                className={`flex flex-col items-center cursor-pointer ${
+                  isProcessing || isRecording ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-600">오디오 파일 업로드</span>
+                <span className="text-xs text-gray-400 mt-1">클릭하여 파일 선택</span>
+              </label>
+            </div>
+
+            {/* 업로드된 오디오 파일 표시 */}
+            {audioUrl && (
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <FileAudio className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm text-gray-700 flex-1 truncate">{audioFile?.name}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={toggleAudioPlayback}
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={removeAudioFile}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <audio
+                  ref={audioRef}
+                  src={audioUrl}
+                  onEnded={() => setIsPlaying(false)}
+                  className="hidden"
+                />
+              </div>
+            )}
+
+            {/* 처리 중 표시 */}
+            {isProcessing && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-700">오디오 파일을 텍스트로 변환 중...</span>
+              </div>
+            )}
+
+            {/* 일지 내용 입력/표시 */}
+            <div className="relative">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                일지 내용
+              </label>
+              {isEditingJournal ? (
+                <textarea
+                  className="w-full h-48 p-4 bg-white border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  value={journalContent}
+                  onChange={(e) => setJournalContent(e.target.value)}
+                  placeholder="일지 내용을 입력하세요..."
+                />
+              ) : (
+                <div className="w-full h-48 p-4 bg-gray-50 border border-gray-200 rounded-lg overflow-y-auto">
+                  {journalContent ? (
+                    <p className="text-gray-700 whitespace-pre-wrap">{journalContent}</p>
+                  ) : (
+                    <p className="text-gray-400 text-center">
+                      녹음하기 버튼을 눌러 음성으로 일지를 작성하거나<br />
+                      오디오 파일을 업로드하세요.
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              <Button
+                size="sm"
+                variant="outline"
+                className="absolute top-0 right-0"
+                onClick={() => setIsEditingJournal(!isEditingJournal)}
+              >
+                {isEditingJournal ? '완료' : '수정'}
+              </Button>
+            </div>
+
+            {/* 액션 버튼들 */}
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className={`flex-1 transition-all duration-200 ${
+                  isRecording 
+                    ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={!isConnected || isProcessing || !!audioFile}
+              >
+                {isRecording ? (
+                  <>
+                    <MicOff className="w-4 h-4 mr-2" />
+                    <span>녹음 중지</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-4 h-4 mr-2" />
+                    <span>녹음 시작</span>
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="default"
+                className="flex-1 bg-primary-500 hover:bg-primary-600"
+                disabled={!journalContent.trim() || isProcessing || isRecording}
+                onClick={handleCreateJournal}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <span>처리 중...</span>
+                  </>
+                ) : (
+                  '일지 생성'
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

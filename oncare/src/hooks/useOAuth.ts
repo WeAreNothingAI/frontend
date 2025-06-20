@@ -1,4 +1,3 @@
-// src/hooks/useOAuth.ts
 import { useState, useCallback } from 'react';
 import { generateOAuthUrl } from '@/utils/oauth';
 import type { OAuthProvider } from '@/types/auth';

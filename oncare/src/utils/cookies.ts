@@ -1,34 +1,6 @@
-// utils/cookies.ts - 개선된 버전
-export const getCookie = (name: string): string | null => {
-  if (typeof window === 'undefined') return null;
-  
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  
-  if (parts.length === 2) {
-    const cookieValue = parts.pop()?.split(';').shift();
-    return cookieValue || null;
-  }
-  
-  return null;
-};
+// utils/cookies.ts - localStorage 기반으로 수정된 버전
 
-export const setCookie = (name: string, value: string, days: number = 7): void => {
-  if (typeof window === 'undefined') return;
-  
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-};
-
-export const deleteCookie = (name: string): void => {
-  if (typeof window === 'undefined') return;
-  
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-};
-
-// JWT 토큰 디코딩
+// JWT 토큰 디코딩 (여전히 필요)
 export const decodeJWT = (token: string) => {
   try {
     const base64Url = token.split('.')[1];
@@ -42,7 +14,6 @@ export const decodeJWT = (token: string) => {
     
     return JSON.parse(jsonPayload);
   } catch (error) {
-    // 운영 환경에서는 로그 최소화
     if (process.env.NODE_ENV === 'development') {
       console.error('JWT 디코딩 에러:', error);
     }
@@ -50,89 +21,95 @@ export const decodeJWT = (token: string) => {
   }
 };
 
-// 🔥 실제 백엔드 쿠키 이름에 맞춘 토큰 추출
-export const getUserFromToken = () => {
-  // 개발 환경에서만 디버깅 로그
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 쿠키에서 토큰 찾는 중...');
-    console.log('전체 쿠키:', document.cookie);
+// 🔄 localStorage에서 토큰 및 사용자 정보 가져오기
+export const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  
+  const token = localStorage.getItem('access_token');
+  const userStr = localStorage.getItem('user');
+  
+  if (!token || !userStr) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('❌ 인증 정보가 없습니다');
+    }
+    return null;
   }
   
-  // 🔥 실제 백엔드에서 사용하는 쿠키 이름들
-  const tokenNames = ['access_token', 'refresh_token'];
-  
-  let token = null;
-  let tokenName = '';
-  
-  // access_token 우선 시도
-  for (const name of tokenNames) {
-    const foundToken = getCookie(name);
-    if (foundToken && foundToken.startsWith('eyJ')) { // JWT 형식 확인
-      token = foundToken;
-      tokenName = name;
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ ${name} 토큰 발견`);
+  try {
+    const user = JSON.parse(userStr);
+    const decodedToken = decodeJWT(token);
+    
+    // 토큰 만료 확인
+    if (decodedToken?.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (decodedToken.exp < now) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ 토큰이 만료되었습니다');
+        }
+        return null;
       }
-      break;
     }
-  }
-  
-  if (!token) {
+    
+    return {
+      token,
+      user,
+      decodedToken
+    };
+  } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.log('❌ 유효한 JWT 토큰을 찾을 수 없습니다');
+      console.error('인증 데이터 파싱 에러:', error);
     }
     return null;
   }
+};
+
+// 🔄 인증 정보 저장
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const setAuthData = (token: string, user: any) => {
+  if (typeof window === 'undefined') return;
   
-  const decoded = decodeJWT(token);
-  if (!decoded) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('❌ JWT 디코딩 실패');
-    }
-    return null;
-  }
-  
-  // 토큰 만료 확인
-  const now = Math.floor(Date.now() / 1000);
-  if (decoded.exp && decoded.exp < now) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('❌ 토큰이 만료되었습니다');
-      console.log('만료시간:', new Date(decoded.exp * 1000).toLocaleString());
-    }
-    return null;
-  }
+  localStorage.setItem('access_token', token);
+  localStorage.setItem('user', JSON.stringify(user));
   
   if (process.env.NODE_ENV === 'development') {
-    console.log('✅ 유효한 토큰:', {
-      tokenName,
-      user: decoded.name,
-      role: decoded.role,
-      expires: new Date(decoded.exp * 1000).toLocaleString()
-    });
+    console.log('✅ 인증 정보 저장 완료');
   }
+};
+
+// 🔄 인증 정보 삭제
+export const clearAuthData = () => {
+  if (typeof window === 'undefined') return;
   
-  return {
-    id: decoded.sub,
-    email: decoded.email,
-    name: decoded.name,
-    role: decoded.role,
-    exp: decoded.exp,
-    iat: decoded.iat,
-    tokenName
-  };
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🗑️ 인증 정보 삭제 완료');
+  }
 };
 
 // 🔥 디버깅 전용 함수 (개발 환경에서만)
-export const debugCookies = () => {
+export const debugAuth = () => {
   if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') return;
   
-  console.log('🍪 현재 모든 쿠키:', document.cookie);
+  console.log('🔐 현재 인증 상태:');
+  console.log('Access Token:', localStorage.getItem('access_token'));
+  console.log('Refresh Token:', localStorage.getItem('refresh_token'));
+  console.log('User:', localStorage.getItem('user'));
   
-  const cookies = document.cookie.split(';').map(cookie => {
-    const [name, value] = cookie.trim().split('=');
-    return { name, value: value?.substring(0, 50) + '...' };
-  });
-  
-  console.table(cookies);
+  const authData = getAuthData();
+  if (authData) {
+    console.log('✅ 인증 유효:', authData.user);
+    console.log('토큰 만료:', new Date(authData.decodedToken.exp * 1000).toLocaleString());
+  } else {
+    console.log('❌ 인증 없음 또는 만료');
+  }
 };
+
+// 🗑️ 더 이상 필요없는 쿠키 관련 함수들은 제거
+// - getCookie (localStorage 사용)
+// - setCookie (localStorage 사용)
+// - deleteCookie (localStorage 사용)
+// - getUserFromToken (getAuthData로 대체)
+// - debugCookies (debugAuth로 대체)
