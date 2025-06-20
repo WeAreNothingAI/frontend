@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -11,12 +12,14 @@ export default function HomePage() {
     router.replace('/login');
   }, [router]);
 
+
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
         <p className="mt-7 text-gray-600">로그인 페이지로 이동 중...</p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -30,7 +30,9 @@ function KakaoAuthContent() {
       });
       try {
         // 1. 토큰을 localStorage에 저장합니다.
+
         localStorage.setItem("access_token", accessToken);
+
 
         // 2. JWT 토큰의 payload를 디코딩하여 사용자 정보를 추출합니다.
         const payload = JSON.parse(atob(accessToken.split(".")[1]));
@@ -115,4 +117,6 @@ export default function Page() {
       <KakaoAuthContent />
     </Suspense>
   );
+
 }
+
