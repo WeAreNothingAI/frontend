@@ -402,7 +402,7 @@ export default function SocialWorkerDashboard() {
       <header className="bg-white border-b border-border-light shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/oauth" className="flex items-center">
+            <Link href="/login" className="flex items-center">
               <Image
                 src="/Container.png"
                 alt="Oncare Logo"
