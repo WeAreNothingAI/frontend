@@ -15,7 +15,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, Clock, Mic, MicOff, Loader2, Upload, FileAudio, Play, Pause, X } from 'lucide-react';
 import { useSTTWebSocket } from '@/hooks/useSTTWebSocKet';
-import { useMockSTTWebSocket } from '@/hooks/useMockSTTWebSocket';
 import type { ClientDetail } from '@/lib/api';
 import LogoutButton from '../ui/LogOutButton';
 
@@ -75,8 +74,7 @@ export default function CareWorkerDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentToken = localStorage.getItem('access_token');
-  const isTemporaryToken = currentToken?.startsWith('temp_jwt_token_');
-  const sttHook = isTemporaryToken ? useMockSTTWebSocket : useSTTWebSocket;
+  const sttHook = useSTTWebSocket;
 
   
 
@@ -472,18 +470,10 @@ export default function CareWorkerDashboard() {
             </div>
 
               {/* WebSocket 연결 상태 */}
-              {!isConnected && !isTemporaryToken && (
+              {!isConnected && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-yellow-600" />
                 <span className="text-sm text-yellow-700">음성 인식 서버 연결 중...</span>
-              </div>
-            )}
-            
-            {/* 개발용 Mock STT 안내 */}
-            {isTemporaryToken && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                <span className="text-sm text-blue-700">개발용 Mock STT 사용 중 (실제 백엔드 연결 시 자동 전환)</span>
               </div>
             )}
             

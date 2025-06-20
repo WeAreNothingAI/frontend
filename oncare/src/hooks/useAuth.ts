@@ -30,26 +30,17 @@ export const useAuth = (): UseAuthReturn => {
   // JWT 토큰에서 사용자 정보 추출 (임시 토큰 지원)
   const extractUserFromToken = useCallback((token: string): User | null => {
     try {
-      // 임시 토큰인 경우
-      if (token.startsWith('temp_jwt_token_')) {
-        console.log('🔧 임시 토큰 감지');
-        return null; // localStorage의 user 정보 사용
-      }
-
       if (!token || !token.startsWith('eyJ')) {
         return null;
       }
-
       // JWT payload 디코딩
       const payload = JSON.parse(atob(token.split('.')[1]));
-      
       // 토큰 만료 확인
       const now = Math.floor(Date.now() / 1000);
       if (payload.exp && payload.exp < now) {
         console.log('⏰ 토큰이 만료되었습니다');
         return null;
       }
-
       // 사용자 정보 반환
       return {
         id: payload.sub || payload.id,
@@ -97,29 +88,18 @@ export const useAuth = (): UseAuthReturn => {
       if (storedToken && storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          
-          // 임시 토큰인 경우
-          if (storedToken.startsWith('temp_jwt_token_')) {
-            console.log('🔧 임시 로그인 상태 복원:', parsedUser);
+          const tokenUser = extractUserFromToken(storedToken);
+          if (tokenUser) {
+            console.log('✅ 유효한 JWT 토큰 발견:', tokenUser);
+            setToken(storedToken);
+            setUser(tokenUser);
+            setIsAuthenticated(true);
+          } else {
+            // 저장된 사용자 정보로 폴백 (백엔드와 싱크 맞추기 위해)
+            console.log('⚠️ 토큰 검증 실패, 저장된 사용자 정보 사용:', parsedUser);
             setToken(storedToken);
             setUser(parsedUser);
             setIsAuthenticated(true);
-          } else {
-            // 실제 JWT 토큰 검증
-            const tokenUser = extractUserFromToken(storedToken);
-            
-            if (tokenUser) {
-              console.log('✅ 유효한 JWT 토큰 발견:', tokenUser);
-              setToken(storedToken);
-              setUser(tokenUser);
-              setIsAuthenticated(true);
-            } else {
-              // 저장된 사용자 정보로 폴백 (백엔드와 싱크 맞추기 위해)
-              console.log('⚠️ 토큰 검증 실패, 저장된 사용자 정보 사용:', parsedUser);
-              setToken(storedToken);
-              setUser(parsedUser);
-              setIsAuthenticated(true);
-            }
           }
         } catch (error) {
           console.error('저장된 데이터 파싱 실패:', error);

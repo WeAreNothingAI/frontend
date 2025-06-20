@@ -43,43 +43,6 @@ function LoginContent() {
     }
   }, [isAuthenticated, isLoading, router, mounted]);
 
-  // 🔥 임시 로그인 함수들 (바로 대시보드로 이동)
-  const handleTempLogin = (role: 'socialWorker' | 'careWorker') => {
-    const tempUsers = {
-      socialWorker: {
-        id: 1,
-        name: '김사회복지사',
-        email: 'social@example.com',
-        role: 'socialWorker' as const,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z'
-      },
-      careWorker: {
-        id: 2,
-        name: '박요양보호사',
-        email: 'care@example.com',
-        role: 'careWorker' as const,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z'
-      }
-    };
-
-    const user = tempUsers[role];
-    const tempToken = `temp_jwt_token_${role}_${Date.now()}`;
-
-    console.log('🔧 임시 로그인:', user);
-
-    // 인증 정보 설정
-    setAuthData(tempToken, user);
-
-    // 🔥 바로 대시보드로 이동 (login-success 건너뛰기)
-    if (role === 'socialWorker') {
-      router.push('/dashboard/social-worker');
-    } else {
-      router.push('/dashboard/care-worker');
-    }
-  };
-
   if (!mounted || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -131,27 +94,6 @@ function LoginContent() {
               {urlError === 'auth_failed' ? '인증에 실패했습니다. 다시 시도해주세요.' : urlError || error}
             </div>
           )}
-
-          {/* 🔥 임시 로그인 버튼들 (개발용) */}
-          <div className="space-y-3 mb-6">
-            <div className="text-center text-sm text-gray-500 mb-3">
-              🔧 개발용 임시 로그인
-            </div>
-            
-            <button
-              onClick={() => handleTempLogin('socialWorker')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              👨‍💼 사회복지사로 로그인 (개발용)
-            </button>
-            
-            <button
-              onClick={() => handleTempLogin('careWorker')}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              👩‍⚕️ 요양보호사로 로그인 (개발용)
-            </button>
-          </div>
 
           {/* 구분선 */}
           <div className="relative my-6">
